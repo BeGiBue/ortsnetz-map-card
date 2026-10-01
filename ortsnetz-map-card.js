@@ -1,7 +1,9 @@
-// Ortsnetz Map Card v1.0.0
-const LEAFLET_VERSION = "1.9.4";
-const LEAFLET_JS = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.js`;
-const LEAFLET_CSS = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.css`;
+// Ortsnetz Map Card v1.0.1
+const MAPLIBRE_VERSION = "5.7.1";
+const MAPLIBRE_JS = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`;
+const MAPLIBRE_CSS = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`;
+const OPENFREEMAP_LIGHT_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const OPENFREEMAP_DARK_STYLE = "https://tiles.openfreemap.org/styles/dark";
 
 const DEFAULT_CONFIG = {
   zoom: 10,
@@ -10,39 +12,39 @@ const DEFAULT_CONFIG = {
   show_status: true,
 };
 
-let leafletPromise;
+let mapLibrePromise;
 
-function loadLeaflet() {
-  if (window.L) return Promise.resolve(window.L);
-  if (leafletPromise) return leafletPromise;
+function loadMapLibre() {
+  if (window.maplibregl) return Promise.resolve(window.maplibregl);
+  if (mapLibrePromise) return mapLibrePromise;
 
-  leafletPromise = new Promise((resolve, reject) => {
-    if (!document.querySelector(`link[href="${LEAFLET_CSS}"]`)) {
+  mapLibrePromise = new Promise((resolve, reject) => {
+    if (!document.querySelector(`link[href="${MAPLIBRE_CSS}"]`)) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = LEAFLET_CSS;
+      link.href = MAPLIBRE_CSS;
       document.head.appendChild(link);
     }
 
-    const existing = document.querySelector(`script[src="${LEAFLET_JS}"]`);
+    const existing = document.querySelector(`script[src="${MAPLIBRE_JS}"]`);
     if (existing) {
-      if (window.L) {
-        resolve(window.L);
+      if (window.maplibregl) {
+        resolve(window.maplibregl);
       } else {
-        existing.addEventListener("load", () => resolve(window.L), { once: true });
+        existing.addEventListener("load", () => resolve(window.maplibregl), { once: true });
         existing.addEventListener("error", reject, { once: true });
       }
       return;
     }
 
     const script = document.createElement("script");
-    script.src = LEAFLET_JS;
-    script.onload = () => resolve(window.L);
+    script.src = MAPLIBRE_JS;
+    script.onload = () => resolve(window.maplibregl);
     script.onerror = reject;
     document.head.appendChild(script);
   });
 
-  return leafletPromise;
+  return mapLibrePromise;
 }
 
 function clamp(value, min, max, fallback) {
@@ -57,32 +59,26 @@ class OrtsnetzMapCard extends HTMLElement {
     this._config = { ...DEFAULT_CONFIG };
     this._hass = null;
     this._map = null;
-    this._measurementLayer = null;
     this._resizeObserver = null;
     this._refreshTimer = null;
     this._lastThemeDark = null;
     this._currentData = null;
     this._initialized = false;
+    this._popup = null;
+    this._mapLoaded = false;
   }
 
   setConfig(config) {
-    const merged = {
-      ...DEFAULT_CONFIG,
-      ...config,
-    };
-
+    const merged = { ...DEFAULT_CONFIG, ...config };
     merged.zoom = clamp(merged.zoom, 1, 19, 10);
     merged.refresh_interval = clamp(merged.refresh_interval, 60, 3600, 300);
     merged.phase = ["auto", "L1", "L2", "L3"].includes(String(merged.phase))
       ? String(merged.phase)
       : "auto";
     merged.show_status = merged.show_status !== false;
-
     this._config = merged;
 
-    if (this._initialized && this.isConnected && this._hass) {
-      this._reinitialize();
-    }
+    if (this._initialized && this.isConnected && this._hass) this._reinitialize();
   }
 
   set hass(hass) {
@@ -118,17 +114,21 @@ class OrtsnetzMapCard extends HTMLElement {
       this._resizeObserver.disconnect();
       this._resizeObserver = null;
     }
+    if (this._popup) {
+      this._popup.remove();
+      this._popup = null;
+    }
     if (this._map) {
       this._map.remove();
       this._map = null;
     }
-    this._measurementLayer = null;
     this._mapElement = null;
     this._statusElement = null;
     this._initialized = false;
+    this._mapLoaded = false;
+    this._lastThemeDark = null;
     if (clearMarkup) this.innerHTML = "";
   }
-
 
   async _initialize() {
     if (this._initialized || this._map || !this._hass) return;
@@ -137,59 +137,27 @@ class OrtsnetzMapCard extends HTMLElement {
     this.innerHTML = `
       <ha-card>
         <style>
-          @import url("${LEAFLET_CSS}");
+          @import url("${MAPLIBRE_CSS}");
           :host { display:block; width:100%; height:100%; min-height:0; }
-          ha-card { display:block; box-sizing:border-box; width:100%; height:100%; min-height:0; }
-          .leaflet-container { overflow: hidden; position: relative; outline-offset: 1px; }
-          .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; }
-          .leaflet-container { -webkit-tap-highlight-color: transparent; }
-          .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { -webkit-user-select: none; -moz-user-select: none; user-select: none; -webkit-user-drag: none; }
-          .leaflet-tile::selection { background: transparent; }
-          .leaflet-safari .leaflet-tile { image-rendering: -webkit-optimize-contrast; }
-          .leaflet-safari .leaflet-tile-container { width: 1600px; height: 1600px; -webkit-transform-origin: 0 0; }
-          .leaflet-marker-icon, .leaflet-marker-shadow { display: block; }
-          .leaflet-container .leaflet-overlay-pane svg { max-width: none !important; max-height: none !important; }
-          .leaflet-container .leaflet-marker-pane img, .leaflet-container .leaflet-shadow-pane img, .leaflet-container .leaflet-tile-pane img, .leaflet-container img.leaflet-image-layer, .leaflet-container .leaflet-tile { max-width: none !important; max-height: none !important; width: auto; padding: 0; }
-          .leaflet-container.leaflet-touch-zoom { touch-action: pan-x pan-y; }
-          .leaflet-container.leaflet-touch-drag { touch-action: none; touch-action: pinch-zoom; }
-          .leaflet-container.leaflet-touch-drag.leaflet-touch-zoom { touch-action: none; }
-          .leaflet-control-container .leaflet-top, .leaflet-control-container .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; }
-          .leaflet-control-container .leaflet-top { top: 0; }
-          .leaflet-control-container .leaflet-right { right: 0; }
-          .leaflet-control-container .leaflet-bottom { bottom: 0; }
-          .leaflet-control-container .leaflet-left { left: 0; }
-          .leaflet-control { position: relative; z-index: 800; pointer-events: auto; float: left; clear: both; }
-          .leaflet-right .leaflet-control { float: right; }
-          .leaflet-top .leaflet-control { margin-top: 10px; }
-          .leaflet-bottom .leaflet-control { margin-bottom: 10px; }
-          .leaflet-left .leaflet-control { margin-left: 10px; }
-          .leaflet-right .leaflet-control { margin-right: 10px; }
-          .leaflet-zoom-animated { transform-origin: 0 0; }
-          .leaflet-zoom-box { width: 0; height: 0; box-sizing: border-box; z-index: 800; }
-          .leaflet-pane { z-index: 400; }
-          .leaflet-tile-pane { z-index: 200; }
-          .leaflet-overlay-pane { z-index: 400; }
-          .leaflet-shadow-pane { z-index: 500; }
-          .leaflet-marker-pane { z-index: 600; }
-          .leaflet-tooltip-pane { z-index: 650; }
-          .leaflet-popup-pane { z-index: 700; }
-          .leaflet-map-pane canvas { z-index: 100; }
-          .leaflet-map-pane svg { z-index: 200; }
+          ha-card { display:block; box-sizing:border-box; width:100%; height:100%; min-height:0; overflow:hidden; }
           .ortsnetz-wrap { position:relative; overflow:hidden; border-radius:var(--ha-card-border-radius, 12px); width:100%; height:100%; min-height:168px; }
           .ortsnetz-map { width:100%; height:100%; min-height:168px; background:var(--primary-background-color); }
-          .ortsnetz-map.dark .leaflet-tile-pane { filter: brightness(.65) invert(1) contrast(1.15) hue-rotate(180deg) saturate(.65); }
-          .ortsnetz-map.dark .leaflet-overlay-pane, .ortsnetz-map.dark .leaflet-marker-pane, .ortsnetz-map.dark .leaflet-popup-pane, .ortsnetz-map.dark .leaflet-shadow-pane { filter: none; }
-          .ortsnetz-status { position: absolute; z-index: 1000; left: 10px; bottom: 24px; padding: 6px 9px; border-radius: 7px; font-size: 11px; background: color-mix(in srgb, var(--card-background-color) 92%, transparent); color: var(--primary-text-color); box-shadow: 0 1px 4px rgba(0,0,0,.2); pointer-events: none; }
-          .ortsnetz-status[hidden] { display: none; }
-          .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card-background-color); color: var(--primary-text-color); }
-          .leaflet-control-attribution { font-size: 9px; }
-          .ortsnetz-map.dark .leaflet-control-zoom a { background:var(--card-background-color); color:var(--primary-text-color); border-color:var(--divider-color); }
-          .ortsnetz-map.dark .leaflet-control-attribution { background:color-mix(in srgb, var(--card-background-color) 88%, transparent); color:var(--secondary-text-color); }
-          .ortsnetz-map.dark .leaflet-control-attribution a { color:var(--primary-color); }
-          .popup-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-          .popup-value { font-weight: 600; }
-          .popup-time { margin-top: 8px; font-size: 11px; opacity: .7; }
-          .popup-warning { margin-top: 8px; font-size: 12px; }
+          .ortsnetz-status { position:absolute; z-index:5; left:10px; bottom:28px; padding:6px 9px; border-radius:7px; font-size:11px; background:color-mix(in srgb, var(--card-background-color) 92%, transparent); color:var(--primary-text-color); box-shadow:0 1px 4px rgba(0,0,0,.2); pointer-events:none; }
+          .ortsnetz-status[hidden] { display:none; }
+          .maplibregl-popup-content { background:var(--card-background-color); color:var(--primary-text-color); border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+          .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color:var(--card-background-color); }
+          .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color:var(--card-background-color); }
+          .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color:var(--card-background-color); }
+          .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color:var(--card-background-color); }
+          .maplibregl-popup-close-button { color:var(--primary-text-color); font-size:18px; }
+          .maplibregl-ctrl-group { background:var(--card-background-color); }
+          .maplibregl-ctrl-group button { color:var(--primary-text-color); }
+          .maplibregl-ctrl-attrib { background:color-mix(in srgb, var(--card-background-color) 88%, transparent) !important; color:var(--secondary-text-color); font-size:9px; }
+          .maplibregl-ctrl-attrib a { color:var(--primary-color); }
+          .popup-title { font-size:15px; font-weight:700; margin-bottom:8px; }
+          .popup-value { font-weight:600; }
+          .popup-time { margin-top:8px; font-size:11px; opacity:.7; }
+          .popup-warning { margin-top:8px; font-size:12px; }
         </style>
         <div class="ortsnetz-wrap">
           <div class="ortsnetz-map"></div>
@@ -201,44 +169,77 @@ class OrtsnetzMapCard extends HTMLElement {
     this._statusElement = this.querySelector(".ortsnetz-status");
 
     try {
-      const L = await loadLeaflet();
+      const maplibregl = await loadMapLibre();
       const latitude = Number(this._config.latitude ?? this._hass.config.latitude);
       const longitude = Number(this._config.longitude ?? this._hass.config.longitude);
+      const dark = this._isDarkTheme();
+      this._lastThemeDark = dark;
 
-      this._map = L.map(this._mapElement, {
-        zoomControl: true,
+      this._map = new maplibregl.Map({
+        container: this._mapElement,
+        style: dark ? OPENFREEMAP_DARK_STYLE : OPENFREEMAP_LIGHT_STYLE,
+        center: [longitude, latitude],
+        zoom: Number(this._config.zoom),
         attributionControl: true,
-      }).setView([latitude, longitude], Number(this._config.zoom));
+      });
 
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(this._map);
+      this._map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
-      this._measurementLayer = L.layerGroup().addTo(this._map);
-      this._applyTheme();
-      await this._loadMeasurements();
+      this._map.on("load", async () => {
+        this._mapLoaded = true;
+        this._installPointInteractions(maplibregl);
+        await this._loadMeasurements();
+      });
+
+      this._map.on("style.load", () => {
+        if (!this._mapLoaded) return;
+        this._renderPoints(this._currentData);
+      });
 
       const refreshSeconds = Math.max(60, Number(this._config.refresh_interval) || 300);
       this._refreshTimer = setInterval(() => this._loadMeasurements(), refreshSeconds * 1000);
 
-      this._resizeObserver = new ResizeObserver(() => this._map?.invalidateSize());
+      this._resizeObserver = new ResizeObserver(() => this._map?.resize());
       this._resizeObserver.observe(this._mapElement);
-      setTimeout(() => this._map?.invalidateSize(), 250);
+      setTimeout(() => this._map?.resize(), 250);
     } catch (error) {
       this._setStatus(`Fehler: ${error.message || error}`);
       console.error("Ortsnetz Map initialization failed", error);
     }
   }
 
-  _isDarkTheme() {
-    // Primary source: Home Assistant's currently active theme state.
-    // This follows per-user/per-dashboard theme changes immediately.
-    if (typeof this._hass?.themes?.darkMode === "boolean") {
-      return this._hass.themes.darkMode;
-    }
+  _installPointInteractions(maplibregl) {
+    this._map.on("mouseenter", "ortsnetz-points", () => {
+      this._map.getCanvas().style.cursor = "pointer";
+    });
+    this._map.on("mouseleave", "ortsnetz-points", () => {
+      this._map.getCanvas().style.cursor = "";
+    });
+    this._map.on("click", "ortsnetz-points", (event) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
+      const p = feature.properties || {};
+      if (this._popup) this._popup.remove();
+      this._popup = new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
+        .setLngLat(feature.geometry.coordinates)
+        .setHTML(`
+          <div>
+            <div class="popup-title">Ortsnetz-Messpunkt</div>
+            L1: <span class="popup-value">${this._fmtV(p.l1_v)}</span><br>
+            L2: <span class="popup-value">${this._fmtV(p.l2_v)}</span><br>
+            L3: <span class="popup-value">${this._fmtV(p.l3_v)}</span><br><br>
+            Frequenz: <span class="popup-value">${p.grid_frequency_hz !== "" ? Number(p.grid_frequency_hz).toFixed(2) + " Hz" : "–"}</span><br>
+            Messungen: <span class="popup-value">${p.sample_count || "–"}</span>
+            ${p.stale === true || p.stale === "true" ? '<div class="popup-warning">⚠️ Messwert möglicherweise veraltet</div>' : ""}
+            <div class="popup-time">Letzte Messung: ${this._formatDate(p.observed_at)}</div>
+          </div>`)
+        .addTo(this._map);
+    });
+  }
 
-    // Fallback for HA versions/themes that do not expose darkMode.
+  _isDarkTheme() {
+    if (typeof this._hass?.themes?.darkMode === "boolean") return this._hass.themes.darkMode;
+
     const hostStyles = getComputedStyle(this);
     const bg = (
       hostStyles.getPropertyValue("--primary-background-color") ||
@@ -266,12 +267,11 @@ class OrtsnetzMapCard extends HTMLElement {
   }
 
   _applyTheme() {
-    if (!this._mapElement) return;
+    if (!this._map) return;
     const dark = this._isDarkTheme();
-    if (dark !== this._lastThemeDark) {
-      this._mapElement.classList.toggle("dark", dark);
-      this._lastThemeDark = dark;
-    }
+    if (dark === this._lastThemeDark) return;
+    this._lastThemeDark = dark;
+    this._map.setStyle(dark ? OPENFREEMAP_DARK_STYLE : OPENFREEMAP_LIGHT_STYLE);
   }
 
   async _loadMeasurements() {
@@ -279,9 +279,7 @@ class OrtsnetzMapCard extends HTMLElement {
     this._setStatus("Lade Messwerte …");
 
     try {
-      const data = await this._hass.connection.sendMessagePromise({
-        type: "ortsnetz_map/get_points",
-      });
+      const data = await this._hass.connection.sendMessagePromise({ type: "ortsnetz_map/get_points" });
       this._currentData = data;
       this._renderPoints(data);
       const time = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -293,8 +291,8 @@ class OrtsnetzMapCard extends HTMLElement {
   }
 
   _renderPoints(data) {
-    if (!this._measurementLayer || !window.L || !Array.isArray(data?.points)) return;
-    this._measurementLayer.clearLayers();
+    if (!this._map || !this._mapLoaded || !Array.isArray(data?.points)) return;
+    if (!this._map.isStyleLoaded()) return;
 
     const scale = data.scale || {
       criticalLow: 207,
@@ -303,41 +301,53 @@ class OrtsnetzMapCard extends HTMLElement {
       criticalHigh: 253,
       colors: ["#1d4ed8", "#38bdf8", "#16a34a", "#f59e0b", "#b91c1c"],
     };
-
     const phase = this._config.phase === "auto" ? (data.phase || "L1") : String(this._config.phase).toUpperCase();
 
-    for (const point of data.points) {
-      if (point.latitude == null || point.longitude == null) continue;
-      const voltage = phase === "L2" ? point.l2_v : phase === "L3" ? point.l3_v : point.l1_v;
-      const color = this._voltageColor(voltage, scale);
-
-      const marker = window.L.circleMarker([Number(point.latitude), Number(point.longitude)], {
-        radius: 6,
-        color,
-        weight: 2,
-        opacity: point.stale ? 0.55 : 1,
-        fillColor: color,
-        fillOpacity: point.stale ? 0.30 : 0.85,
+    const features = data.points
+      .filter((point) => point.latitude != null && point.longitude != null)
+      .map((point) => {
+        const voltage = phase === "L2" ? point.l2_v : phase === "L3" ? point.l3_v : point.l1_v;
+        return {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [Number(point.longitude), Number(point.latitude)] },
+          properties: {
+            color: this._voltageColor(voltage, scale),
+            stale: Boolean(point.stale),
+            l1_v: point.l1_v ?? "",
+            l2_v: point.l2_v ?? "",
+            l3_v: point.l3_v ?? "",
+            grid_frequency_hz: point.grid_frequency_hz ?? "",
+            sample_count: point.sample_count ?? "",
+            observed_at: point.observed_at ?? "",
+          },
+        };
       });
 
-      marker.bindPopup(`
-        <div>
-          <div class="popup-title">Ortsnetz-Messpunkt</div>
-          L1: <span class="popup-value">${this._fmtV(point.l1_v)}</span><br>
-          L2: <span class="popup-value">${this._fmtV(point.l2_v)}</span><br>
-          L3: <span class="popup-value">${this._fmtV(point.l3_v)}</span><br><br>
-          Frequenz: <span class="popup-value">${point.grid_frequency_hz != null ? Number(point.grid_frequency_hz).toFixed(2) + " Hz" : "–"}</span><br>
-          Messungen: <span class="popup-value">${point.sample_count ?? "–"}</span>
-          ${point.stale ? '<div class="popup-warning">⚠️ Messwert möglicherweise veraltet</div>' : ""}
-          <div class="popup-time">Letzte Messung: ${this._formatDate(point.observed_at)}</div>
-        </div>`);
-
-      marker.addTo(this._measurementLayer);
+    const geojson = { type: "FeatureCollection", features };
+    const existingSource = this._map.getSource("ortsnetz-points");
+    if (existingSource) {
+      existingSource.setData(geojson);
+      return;
     }
+
+    this._map.addSource("ortsnetz-points", { type: "geojson", data: geojson });
+    this._map.addLayer({
+      id: "ortsnetz-points",
+      type: "circle",
+      source: "ortsnetz-points",
+      paint: {
+        "circle-radius": 6,
+        "circle-color": ["get", "color"],
+        "circle-stroke-color": ["get", "color"],
+        "circle-stroke-width": 2,
+        "circle-opacity": ["case", ["==", ["get", "stale"], true], 0.30, 0.85],
+        "circle-stroke-opacity": ["case", ["==", ["get", "stale"], true], 0.55, 1],
+      },
+    });
   }
 
   _voltageColor(value, scale) {
-    if (value == null) return "#888888";
+    if (value == null || value === "") return "#888888";
     if (value < scale.criticalLow) return scale.colors[0];
     if (value < scale.warningLow) return scale.colors[1];
     if (value <= scale.warningHigh) return scale.colors[2];
@@ -346,17 +356,13 @@ class OrtsnetzMapCard extends HTMLElement {
   }
 
   _fmtV(value) {
-    return value != null ? `${Number(value).toFixed(1)} V` : "–";
+    return value !== "" && value != null ? `${Number(value).toFixed(1)} V` : "–";
   }
 
   _formatDate(value) {
     if (!value) return "unbekannt";
     return new Date(value).toLocaleString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
+      day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit",
     });
   }
 
@@ -364,11 +370,7 @@ class OrtsnetzMapCard extends HTMLElement {
     if (this._statusElement) this._statusElement.textContent = text;
   }
 
-  getCardSize() {
-    // Only used by masonry views. In Sections views, size comes entirely
-    // from Home Assistant's Layout controls via getGridOptions().
-    return 6;
-  }
+  getCardSize() { return 6; }
 
   getGridOptions() {
     return {
@@ -376,22 +378,13 @@ class OrtsnetzMapCard extends HTMLElement {
       rows: 8,
       min_columns: 3,
       min_rows: 3,
-      // Intentionally no max_columns: Home Assistant can offer the native
-      // "Full" width option in Sections layout.
     };
   }
 
-  static getConfigElement() {
-    return document.createElement("ortsnetz-map-card-editor");
-  }
+  static getConfigElement() { return document.createElement("ortsnetz-map-card-editor"); }
 
   static getStubConfig() {
-    return {
-      zoom: 10,
-      phase: "auto",
-      refresh_interval: 300,
-      show_status: true,
-    };
+    return { zoom: 10, phase: "auto", refresh_interval: 300, show_status: true };
   }
 }
 
@@ -403,22 +396,9 @@ class OrtsnetzMapCardEditor extends HTMLElement {
     this._hass = null;
   }
 
-  set hass(hass) {
-    this._hass = hass;
-    if (this.shadowRoot) this._render();
-  }
-
-  setConfig(config) {
-    this._config = {
-      ...DEFAULT_CONFIG,
-      ...config,
-    };
-    this._render();
-  }
-
-  _usesHaLocation() {
-    return this._config.latitude == null || this._config.longitude == null;
-  }
+  set hass(hass) { this._hass = hass; if (this.shadowRoot) this._render(); }
+  setConfig(config) { this._config = { ...DEFAULT_CONFIG, ...config }; this._render(); }
+  _usesHaLocation() { return this._config.latitude == null || this._config.longitude == null; }
 
   _render() {
     if (!this.shadowRoot) return;
@@ -434,12 +414,7 @@ class OrtsnetzMapCardEditor extends HTMLElement {
         .section-title { font-size:14px; font-weight:600; color:var(--primary-text-color); }
         .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
         label.field { display:grid; gap:6px; font-size:12px; color:var(--secondary-text-color); }
-        input, select {
-          box-sizing:border-box; width:100%; min-height:44px; padding:9px 12px;
-          border:1px solid var(--divider-color); border-radius:8px;
-          background:var(--card-background-color); color:var(--primary-text-color);
-          font:inherit; font-size:14px;
-        }
+        input, select { box-sizing:border-box; width:100%; min-height:44px; padding:9px 12px; border:1px solid var(--divider-color); border-radius:8px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit; font-size:14px; }
         input:focus, select:focus { outline:2px solid var(--primary-color); outline-offset:1px; }
         .check { display:flex; align-items:center; gap:10px; min-height:36px; font-size:14px; }
         .check input { width:20px; height:20px; min-height:0; }
@@ -450,33 +425,22 @@ class OrtsnetzMapCardEditor extends HTMLElement {
         .unit { min-width:28px; color:var(--secondary-text-color); font-size:13px; }
         @media (max-width:520px) { .grid { grid-template-columns:1fr; } }
       </style>
-
       <div class="editor">
         <div class="section">
           <div class="section-title">Darstellung</div>
           <div class="grid">
-            <label class="field">
-              Zoom
-              <input data-key="zoom" type="number" min="1" max="19" step="1" value="${this._config.zoom}">
-            </label>
-            <label class="field">
-              Phase für Markerfarbe
-              <select data-key="phase">
-                <option value="auto" ${this._config.phase === "auto" ? "selected" : ""}>Automatisch</option>
-                <option value="L1" ${this._config.phase === "L1" ? "selected" : ""}>L1</option>
-                <option value="L2" ${this._config.phase === "L2" ? "selected" : ""}>L2</option>
-                <option value="L3" ${this._config.phase === "L3" ? "selected" : ""}>L3</option>
-              </select>
-            </label>
-            <label class="field">
-              Aktualisierung
-              <div class="value-row"><input data-key="refresh_interval" type="number" min="60" max="3600" step="60" value="${this._config.refresh_interval}"><span class="unit">s</span></div>
-            </label>
+            <label class="field">Zoom<input data-key="zoom" type="number" min="1" max="19" step="1" value="${this._config.zoom}"></label>
+            <label class="field">Phase für Markerfarbe<select data-key="phase">
+              <option value="auto" ${this._config.phase === "auto" ? "selected" : ""}>Automatisch</option>
+              <option value="L1" ${this._config.phase === "L1" ? "selected" : ""}>L1</option>
+              <option value="L2" ${this._config.phase === "L2" ? "selected" : ""}>L2</option>
+              <option value="L3" ${this._config.phase === "L3" ? "selected" : ""}>L3</option>
+            </select></label>
+            <label class="field">Aktualisierung<div class="value-row"><input data-key="refresh_interval" type="number" min="60" max="3600" step="60" value="${this._config.refresh_interval}"><span class="unit">s</span></div></label>
           </div>
           <label class="check"><input data-key="show_status" type="checkbox" ${this._config.show_status !== false ? "checked" : ""}>Status unten links anzeigen</label>
           <div class="hint">Breite und Höhe werden ausschließlich über Home Assistants Tab „Layout“ eingestellt. Die Karte füllt den dort zugewiesenen Bereich automatisch vollständig aus.</div>
         </div>
-
         <div class="section">
           <div class="section-title">Kartenmittelpunkt</div>
           <label class="check"><input data-key="use_ha_location" type="checkbox" ${useHaLocation ? "checked" : ""}>Home-Assistant-Standort verwenden</label>
@@ -497,7 +461,6 @@ class OrtsnetzMapCardEditor extends HTMLElement {
     const target = event.currentTarget;
     const key = target.dataset.key;
     if (!key) return;
-
     const next = { ...this._config };
 
     if (key === "use_ha_location") {
@@ -518,22 +481,14 @@ class OrtsnetzMapCardEditor extends HTMLElement {
 
     this._config = next;
     this.dispatchEvent(new CustomEvent("config-changed", {
-      detail: { config: next },
-      bubbles: true,
-      composed: true,
+      detail: { config: next }, bubbles: true, composed: true,
     }));
-
     if (key === "use_ha_location") this._render();
   }
 }
 
-if (!customElements.get("ortsnetz-map-card-editor")) {
-  customElements.define("ortsnetz-map-card-editor", OrtsnetzMapCardEditor);
-}
-
-if (!customElements.get("ortsnetz-map-card")) {
-  customElements.define("ortsnetz-map-card", OrtsnetzMapCard);
-}
+if (!customElements.get("ortsnetz-map-card-editor")) customElements.define("ortsnetz-map-card-editor", OrtsnetzMapCardEditor);
+if (!customElements.get("ortsnetz-map-card")) customElements.define("ortsnetz-map-card", OrtsnetzMapCard);
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === "ortsnetz-map-card")) {

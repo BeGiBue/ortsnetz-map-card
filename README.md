@@ -1,6 +1,6 @@
 # Ortsnetz Map Card
 
-**Version 1.0.0**
+**Version 1.0.1**
 
 HACS-Dashboard-Card zur Darstellung der öffentlichen Messpunkte von [ortsnetz-auslastung.de](https://www.ortsnetz-auslastung.de/) in Home Assistant.
 
@@ -18,7 +18,7 @@ Die Card ist bewusst vom Backend getrennt. HACS verwaltet dieses Repository als 
 - Breite und Höhe ausschließlich über Home Assistants **Layout**-Funktion
 - Sections-Layout mit **Full Width**-Option
 - Automatischer Dark Mode nach dem aktiven Home-Assistant-Theme
-- OpenStreetMap-Grundkarte ohne API-Key
+- OpenFreeMap / OpenStreetMap-Grundkarte ohne API-Key
 - Farbskala und Grenzwerte aus der Ortsnetz-API
 - Popups mit L1/L2/L3, Frequenz, Anzahl Messungen und Zeitstempel
 - Veraltete Messwerte werden transparenter dargestellt
@@ -77,13 +77,13 @@ ortsnetz_map/get_points
 ## Externe Bibliothek / Karte
 
 - Leaflet 1.9.4
-- OpenStreetMap Standard Tiles
+- OpenFreeMap / OpenStreetMap Standard Tiles
 
-Für die OpenStreetMap-Grundkarte wird kein API-Key benötigt. Die erforderliche Attribution bleibt sichtbar.
+Für die OpenFreeMap / OpenStreetMap-Grundkarte wird kein API-Key benötigt. Die erforderliche Attribution bleibt sichtbar.
 
 ## Hinweise
 
-Dieses Projekt ist ein unabhängiges Community-Projekt und nicht Teil von `ortsnetz-auslastung.de`, OpenStreetMap oder Home Assistant.
+Dieses Projekt ist ein unabhängiges Community-Projekt und nicht Teil von `ortsnetz-auslastung.de`, OpenFreeMap / OpenStreetMap oder Home Assistant.
 
 ## Lizenz
 

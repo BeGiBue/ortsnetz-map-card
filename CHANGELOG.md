@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1
+
+- Basiskarte von OpenStreetMap Standard Tiles auf OpenFreeMap umgestellt
+- MapLibre GL für OpenFreeMap-Vektorkarten eingeführt
+- Automatischer Light/Dark-Stil passend zum aktiven Home-Assistant-Theme
+- OSM-Standard-Tile-403-Probleme vermieden
+
 ## 1.0.0
 
 - Erstes stabiles Release.
