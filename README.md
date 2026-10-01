@@ -36,12 +36,16 @@ Installiere zuerst oder zusätzlich das Repository **Ortsnetz Map Backend** (`ho
 
 ## Installation über HACS
 
-1. Dieses Repository auf GitHub unter dem Namen **`ortsnetz-map-card`** bereitstellen.
-2. `ortsnetz-map-card.js` muss direkt im Repository-Root liegen.
-3. In HACS **Benutzerdefinierte Repositories** öffnen.
-4. Repository-URL hinzufügen und Typ **Dashboard** auswählen.
-5. **Ortsnetz Map Card** installieren.
-6. Home-Assistant-App bzw. Browser vollständig neu laden.
+Automatisch
+
+
+
+Manuel
+
+1. In HACS **Benutzerdefinierte Repositories** öffnen.
+2. Repository-URL hinzufügen und Typ **Dashboard** auswählen.
+3. **Ortsnetz Map Card** installieren.
+4. Home-Assistant-App bzw. Browser vollständig neu laden.
 
 ## Card hinzufügen
 
