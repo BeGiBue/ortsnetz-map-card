@@ -6,6 +6,13 @@ HACS-Dashboard-Card zur Darstellung der öffentlichen Messpunkte von [ortsnetz-a
 
 Die Card ist bewusst vom Backend getrennt. HACS verwaltet dieses Repository als **Dashboard-Plugin**; die Messdaten kommen über die separate Home-Assistant-Integration **Ortsnetz Map Backend**.
 
+## Screenshots
+
+| Light Mode | Dark Mode |
+|---|---|
+| ![Light Mode](screenshots/Tag.png) | ![Dark Mode](screenshots/Nacht.png) |
+
+
 ## Funktionen
 
 - Kartenmittelpunkt standardmäßig am in Home Assistant hinterlegten Standort
