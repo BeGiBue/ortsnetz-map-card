@@ -32,7 +32,7 @@ Die Card ist bewusst vom Backend getrennt. HACS verwaltet dieses Repository als 
 
 ## Voraussetzung
 
-Installiere zuerst oder zusätzlich das Repository **Ortsnetz Map Backend** (`home-assistant-ortsnetz-map`) als HACS-Integration und richte es unter **Einstellungen → Geräte & Dienste** ein.
+Installiere zuerst oder zusätzlich das [Ortsnetz Map Backend](https://github.com/BeGiBue/home-assistant-ortsnetz-map) als HACS-Integration und richte es unter **Einstellungen → Geräte & Dienste** ein.
 
 ## Installation über HACS
 
