@@ -98,4 +98,4 @@ Dieses Projekt ist ein unabhängiges Community-Projekt und nicht Teil von `ortsn
 
 ## Lizenz
 
-Creative Commons Attribution-NonCommercial 4.0 International (**CC BY-NC 4.0**). Änderungen und nicht-kommerzielle Weitergabe sind unter Namensnennung erlaubt; kommerzielle Nutzung ist nicht gestattet. Details stehen in `LICENSE`.
+Creative Commons Attribution-ShareAlike 4.0 International (**CC BY-SA 4.0**). Nutzung, Änderungen und auch kommerzielle Nutzung sind unter Namensnennung erlaubt; weitergegebene Bearbeitungen müssen unter derselben oder einer kompatiblen ShareAlike-Lizenz stehen. Details stehen in `LICENSE`.
