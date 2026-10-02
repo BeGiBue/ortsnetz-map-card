@@ -1,6 +1,6 @@
 # Ortsnetz Map Card
 
-**Version 1.0.1**
+**Version 1.0.2**
 
 HACS-Dashboard-Card zur Darstellung der öffentlichen Messpunkte von [ortsnetz-auslastung.de](https://www.ortsnetz-auslastung.de/) in Home Assistant.
 
