@@ -98,4 +98,4 @@ Dieses Projekt ist ein unabhängiges Community-Projekt und nicht Teil von `ortsn
 
 ## Lizenz
 
-Creative Commons Attribution-ShareAlike 4.0 International (**CC BY-SA 4.0**). Nutzung, Änderungen und auch kommerzielle Nutzung sind unter Namensnennung erlaubt; weitergegebene Bearbeitungen müssen unter derselben oder einer kompatiblen ShareAlike-Lizenz stehen. Details stehen in `LICENSE`.
+GNU Affero General Public License v3.0 only (**AGPL-3.0-only**). Nutzung, Änderungen und Weitergabe sind unter den Bedingungen der AGPL erlaubt; abgeleitete Werke müssen unter derselben Lizenz stehen. Bei modifizierten Versionen, die über ein Netzwerk genutzt werden, muss der entsprechende Quellcode den Nutzern zugänglich gemacht werden. Details stehen in `LICENSE`.
