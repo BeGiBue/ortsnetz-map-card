@@ -98,4 +98,4 @@ Dieses Projekt ist ein unabhängiges Community-Projekt und nicht Teil von `ortsn
 
 ## Lizenz
 
-Creative Commons Attribution-NonCommercial 4.0 International (**CC BY-NC 4.0**). Änderungen und nicht-kommerzielle Weitergabe sind unter Namensnennung erlaubt; kommerzielle Nutzung ist nicht gestattet. Details stehen in `LICENSE`.
+Dieses Projekt steht unter der **PolyForm Noncommercial License 1.0.0** (`PolyForm-Noncommercial-1.0.0`). Private und sonstige nicht-kommerzielle Nutzung, Änderungen und Weitergabe sind erlaubt; kommerzielle Nutzung ist nicht gestattet. Details stehen in `LICENSE`.
