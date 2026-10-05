@@ -19,13 +19,13 @@ Die Card ist bewusst vom Backend getrennt. HACS verwaltet dieses Repository als 
 - Standard-Zoom 10
 - Grafischer Karteneditor in Home Assistant
 - Phase für Markerfarbe: automatisch, L1, L2 oder L3
-- Einstellbares Aktualisierungsintervall
+- Einstellbares Aktualisierungsintervall (nur bei sichtbarem Tab; nach Rückkehr in den Tab wird bei Bedarf sofort nachgeladen)
 - Optionale Statusanzeige
 - Optional eigener Kartenmittelpunkt
 - Breite und Höhe ausschließlich über Home Assistants **Layout**-Funktion
 - Sections-Layout mit **Full Width**-Option
 - Automatischer Dark Mode nach dem aktiven Home-Assistant-Theme
-- OpenFreeMap / OpenStreetMap-Grundkarte ohne API-Key
+- OpenFreeMap-Vektorkarte (Daten: OpenStreetMap) ohne API-Key
 - Farbskala und Grenzwerte aus der Ortsnetz-API
 - Popups mit L1/L2/L3, Frequenz, Anzahl Messungen und Zeitstempel
 - Veraltete Messwerte werden transparenter dargestellt
@@ -40,7 +40,7 @@ Automatisch
 
 [![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BeGiBue&repository=ortsnetz-map-card&category=plugin)
 
-Manuel
+Manuell
 
 1. In HACS **Benutzerdefinierte Repositories** öffnen.
 2. Repository-URL hinzufügen und Typ **Dashboard** auswählen.
@@ -85,12 +85,14 @@ Die Card greift nicht direkt auf die externe Messdaten-API zu. Sie verwendet den
 ortsnetz_map/get_points
 ```
 
+Die Card fragt die Daten im eingestellten Intervall an, solange der Browser-Tab sichtbar ist. In einem Hintergrund-Tab wird nicht aktualisiert. Beim Zurückkehren lädt die Card nur nach, wenn die letzten Daten älter als das Intervall sind. Das Backend cached die Messdaten 5 Minuten; mehrere Cards und Browser lösen daher keinen zusätzlichen Abruf bei `ortsnetz-auslastung.de` aus.
+
 ## Externe Bibliothek / Karte
 
-- Leaflet 1.9.4
-- OpenFreeMap / OpenStreetMap Standard Tiles
+- [MapLibre GL JS](https://maplibre.org/) 5.7.1, wird zur Laufzeit von `unpkg.com` geladen
+- [OpenFreeMap](https://openfreemap.org/)-Vektorkarten (Stile „Liberty“ für hell, „Dark“ für dunkel) auf Basis von OpenStreetMap-Daten, geladen von `tiles.openfreemap.org`
 
-Für die OpenFreeMap / OpenStreetMap-Grundkarte wird kein API-Key benötigt. Die erforderliche Attribution bleibt sichtbar.
+Für OpenFreeMap wird kein API-Key benötigt. Die erforderliche Attribution bleibt sichtbar. Der Browser muss `unpkg.com` und `tiles.openfreemap.org` erreichen können; die Messdaten selbst laufen ausschließlich über Home Assistant.
 
 ## Hinweise
 
