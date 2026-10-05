@@ -66,6 +66,8 @@ class OrtsnetzMapCard extends HTMLElement {
     this._initialized = false;
     this._popup = null;
     this._mapLoaded = false;
+    this._lastLoad = 0;
+    this._onVisibilityChange = () => this._handleVisibility();
   }
 
   setConfig(config) {
@@ -110,6 +112,7 @@ class OrtsnetzMapCard extends HTMLElement {
       clearInterval(this._refreshTimer);
       this._refreshTimer = null;
     }
+    document.removeEventListener("visibilitychange", this._onVisibilityChange);
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
       this._resizeObserver = null;
@@ -197,7 +200,11 @@ class OrtsnetzMapCard extends HTMLElement {
       });
 
       const refreshSeconds = Math.max(60, Number(this._config.refresh_interval) || 300);
-      this._refreshTimer = setInterval(() => this._loadMeasurements(), refreshSeconds * 1000);
+      // Bedarfsgesteuert: nur abrufen, solange der Tab sichtbar ist.
+      this._refreshTimer = setInterval(() => {
+        if (!document.hidden) this._loadMeasurements();
+      }, refreshSeconds * 1000);
+      document.addEventListener("visibilitychange", this._onVisibilityChange);
 
       this._resizeObserver = new ResizeObserver(() => this._map?.resize());
       this._resizeObserver.observe(this._mapElement);
@@ -206,6 +213,12 @@ class OrtsnetzMapCard extends HTMLElement {
       this._setStatus(`Fehler: ${error.message || error}`);
       console.error("Ortsnetz Map initialization failed", error);
     }
+  }
+
+  _handleVisibility() {
+    if (document.hidden || !this._map || !this._mapLoaded) return;
+    const refreshMs = Math.max(60, Number(this._config.refresh_interval) || 300) * 1000;
+    if (Date.now() - this._lastLoad >= refreshMs) this._loadMeasurements();
   }
 
   _installPointInteractions(maplibregl) {
@@ -280,6 +293,7 @@ class OrtsnetzMapCard extends HTMLElement {
 
     try {
       const data = await this._hass.connection.sendMessagePromise({ type: "ortsnetz_map/get_points" });
+      this._lastLoad = Date.now();
       this._currentData = data;
       this._renderPoints(data);
       const time = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });

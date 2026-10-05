@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Im Hintergrund-Tab wird nicht mehr aktualisiert; das Intervall überspringt Ticks, solange der Tab verborgen ist.
+- Beim Zurückkehren in den Tab wird nur nachgeladen, wenn die letzten Daten älter als das Aktualisierungsintervall sind.
+- Passt zum bedarfsgesteuerten Abruf im Ortsnetz Map Backend (Cache im Backend, 5 Minuten).
+
 ## 1.0.2
 
 - Lizenz auf GNU Affero General Public License v3.0 only (AGPL-3.0-only) umgestellt.

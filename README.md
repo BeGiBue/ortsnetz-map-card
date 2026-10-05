@@ -19,7 +19,7 @@ Die Card ist bewusst vom Backend getrennt. HACS verwaltet dieses Repository als 
 - Standard-Zoom 10
 - Grafischer Karteneditor in Home Assistant
 - Phase für Markerfarbe: automatisch, L1, L2 oder L3
-- Einstellbares Aktualisierungsintervall
+- Einstellbares Aktualisierungsintervall (nur bei sichtbarem Tab; nach Rückkehr in den Tab wird bei Bedarf sofort nachgeladen)
 - Optionale Statusanzeige
 - Optional eigener Kartenmittelpunkt
 - Breite und Höhe ausschließlich über Home Assistants **Layout**-Funktion
@@ -84,6 +84,8 @@ Die Card greift nicht direkt auf die externe Messdaten-API zu. Sie verwendet den
 ```text
 ortsnetz_map/get_points
 ```
+
+Die Card fragt die Daten im eingestellten Intervall an, solange der Browser-Tab sichtbar ist. In einem Hintergrund-Tab wird nicht aktualisiert. Beim Zurückkehren lädt die Card nur nach, wenn die letzten Daten älter als das Intervall sind. Das Backend cached die Messdaten 5 Minuten; mehrere Cards und Browser lösen daher keinen zusätzlichen Abruf bei `ortsnetz-auslastung.de` aus.
 
 ## Externe Bibliothek / Karte
 
