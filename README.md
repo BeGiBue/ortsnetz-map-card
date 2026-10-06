@@ -1,5 +1,10 @@
 # Ortsnetz Map Card
 
+> [!WARNING]
+> **Dieses Repository ist veraltet und wird nicht mehr weiterentwickelt.**
+>
+> Der Nachfolger ist **[ha-ortsnetz-auslastung](https://github.com/BeGiBue/ha-ortsnetz-auslastung)**. Bitte verwende für neue Installationen und die weitere Entwicklung das neue Repository.
+
 **Version 1.0.2**
 
 HACS-Dashboard-Card zur Darstellung der öffentlichen Messpunkte von [ortsnetz-auslastung.de](https://www.ortsnetz-auslastung.de/) in Home Assistant.
