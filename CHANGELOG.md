@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.3-beta.1 (Vorabversion)
 
 - Im Hintergrund-Tab wird nicht mehr aktualisiert; das Intervall überspringt Ticks, solange der Tab verborgen ist.
 - Beim Zurückkehren in den Tab wird nur nachgeladen, wenn die letzten Daten älter als das Aktualisierungsintervall sind.
