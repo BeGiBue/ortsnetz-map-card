@@ -1,4 +1,4 @@
-// Ortsnetz Map Card v1.0.1
+// Ortsnetz Map Card v1.0.3-beta.1
 const MAPLIBRE_VERSION = "5.7.1";
 const MAPLIBRE_JS = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`;
 const MAPLIBRE_CSS = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`;
